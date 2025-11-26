@@ -263,7 +263,7 @@ export class OrderController {
     const order = await this.orderService.findById(+id);
     
     // 检查权限：只有乘客可以支付
-    if (req.user.role !== UserRole.USER || order.passengerId !== req.user.id) {
+    if (req.user.role !== UserRole.PASSENGER || order.passengerId !== req.user.id) {
       return {
         code: 403,
         message: '无权支付此订单',

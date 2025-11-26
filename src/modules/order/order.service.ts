@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, MoreThan } from 'typeorm';
 import { Order, OrderStatus, OrderType, PayStatus } from './order.entity';
 import { UserService } from '@/modules/user/user.service';
-import { DriverService } from '@/modules/driver/driver.service';
+import { DriverService, DriverStatus } from '@/modules/driver/driver.service';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface CreateOrderDto {
@@ -91,7 +91,7 @@ export class OrderService {
     order.acceptedAt = new Date();
 
     // 更新司机状态为行程中
-    await this.driverService.updateStatus(driverId, 'in_ride');
+    await this.driverService.updateStatus(driverId, DriverStatus.BUSY);
 
     return await this.orderRepository.save(order);
   }
@@ -139,7 +139,7 @@ export class OrderService {
 
     // 更新司机状态为在线
     if (order.driverId) {
-      await this.driverService.updateStatus(order.driverId, 'online');
+      await this.driverService.updateStatus(order.driverId, DriverStatus.ONLINE);
       await this.driverService.updateOrderStats(order.driverId, true);
     }
 
@@ -161,7 +161,7 @@ export class OrderService {
 
     // 如果司机已接单，更新司机状态
     if (order.driverId) {
-      await this.driverService.updateStatus(order.driverId, 'online');
+      await this.driverService.updateStatus(order.driverId, DriverStatus.ONLINE);
       await this.driverService.updateOrderStats(order.driverId, false);
     }
 

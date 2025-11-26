@@ -40,13 +40,13 @@ export class UserService {
   ) {}
 
   // 创建用户
-  async create(createUserDto: CreateUserDto): Promise<User> {
+  async createUser(createUserDto: CreateUserDto): Promise<User> {
     const { phone, password, nickname, avatar, role = UserRole.PASSENGER } = createUserDto;
 
     // 检查手机号是否已存在
     const existingUser = await this.userRepository.findOne({ where: { phone } });
     if (existingUser) {
-      throw new ConflictException('手机号已注册');
+      throw new ConflictException('手机号已存在');
     }
 
     // 加密密码
@@ -56,13 +56,13 @@ export class UserService {
     const user = this.userRepository.create({
       phone,
       password: hashedPassword,
-      nickname: nickname || `用户${phone.slice(-4)}`,
+      realName: nickname || `用户${phone.slice(-4)}`,
       avatar,
       role,
       status: UserStatus.ACTIVE,
     });
 
-    return await this.userRepository.save(user);
+    return await this.userRepository.save([user])[0];
   }
 
   // 用户登录

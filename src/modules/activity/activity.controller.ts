@@ -25,10 +25,10 @@ export class ActivityController {
   // 获取我的活动列表
   @Get('my/list')
   async findMyActivities(
+    @Request() req,
     @Query('page') page = 1,
     @Query('limit') limit = 10,
     @Query('isRead') isRead?: boolean,
-    @Request() req,
   ) {
     const result = await this.activityService.findByUserId(
       req.user.id,

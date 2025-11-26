@@ -1,9 +1,11 @@
-import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { Driver, DriverStatus, DriverVerifyStatus } from './driver.entity';
+import { User, UserRole } from '@/modules/user/user.entity';
+
+export { DriverStatus } from './driver.entity';
 import { UserService } from '@/modules/user/user.service';
-import { UserRole } from '@/modules/user/user.entity';
 
 export interface CreateDriverDto {
   userId: number;
@@ -40,6 +42,8 @@ export class DriverService {
   constructor(
     @InjectRepository(Driver)
     private driverRepository: Repository<Driver>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
     private userService: UserService,
   ) {}
 
@@ -48,13 +52,13 @@ export class DriverService {
     const { userId, realName, idCard, phone, carModel, carColor, carPlate, licenseNumber, experience } = createDriverDto;
 
     // 检查用户是否存在且为乘客角色
-    const user = await this.userService.findById(userId);
-    if (user.role !== UserRole.PASSENGER) {
+    const currentUser = await this.userService.findById(userId);
+    if (currentUser.role !== UserRole.PASSENGER) {
       throw new BadRequestException('用户已经是司机或其他角色');
     }
 
     // 检查手机号是否已被其他司机使用
-    const existingDriver = await this.driverRepository.findOne({ where: { phone } });
+    const existingDriver = await this.driverRepository.findOne({ where: { user: { phone } } });
     if (existingDriver) {
       throw new ConflictException('手机号已被其他司机使用');
     }
@@ -68,32 +72,41 @@ export class DriverService {
     // 创建司机信息
     const driver = this.driverRepository.create({
       userId,
-      realName,
-      idCard,
-      phone,
-      carModel,
-      carColor,
-      carPlate,
       licenseNumber,
-      experience: experience || 0,
+      licenseExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 默认一年后过期
+      vehicleBrand: '未知品牌',
+      vehicleModel: carModel || '未知型号',
+      vehicleColor: carColor || '未知颜色',
+      vehicleSeats: 5,
+      vehicleYear: new Date().getFullYear(),
+      carPlate,
       status: DriverStatus.OFFLINE,
       verifyStatus: DriverVerifyStatus.PENDING,
       rating: 5.0,
       totalOrders: 0,
+      totalTrips: 0,
       completedOrders: 0,
+      completedTrips: 0,
       cancelledOrders: 0,
+      cancelledTrips: 0,
       totalIncome: 0,
       thisMonthIncome: 0,
       thisWeekIncome: 0,
       todayIncome: 0,
+      totalEarnings: 0,
+      commissionOwed: 0,
     });
 
-    const savedDriver = await this.driverRepository.save(driver);
+    const savedDriver = await this.driverRepository.save([driver]);
+    const driverData = savedDriver[0];
 
     // 更新用户角色为司机
-    await this.userService.update(userId, { role: UserRole.DRIVER });
+    const userData = await this.userService.findById(userId);
+    userData.role = UserRole.DRIVER;
+    userData.realName = createDriverDto.realName;
+    await this.userRepository.save([userData]);
 
-    return savedDriver;
+    return driverData;
   }
 
   // 获取所有司机
@@ -158,12 +171,10 @@ export class DriverService {
     const driver = await this.findById(id);
 
     // 如果更新手机号，检查是否已被使用
-    if (updateDriverDto.phone && updateDriverDto.phone !== driver.phone) {
-      const existingDriver = await this.driverRepository.findOne({ 
-        where: { phone: updateDriverDto.phone } 
-      });
-      if (existingDriver) {
-        throw new ConflictException('手机号已被其他司机使用');
+    if (updateDriverDto.phone && updateDriverDto.phone !== driver.user.phone) {
+      const existingUser = await this.userService.findByPhone(updateDriverDto.phone);
+      if (existingUser) {
+        throw new ConflictException('手机号已被其他用户使用');
       }
     }
 
@@ -177,7 +188,19 @@ export class DriverService {
       }
     }
 
-    Object.assign(driver, updateDriverDto);
+    // 更新用户信息
+    if (updateDriverDto.phone || updateDriverDto.realName) {
+      const userUpdateData: any = {};
+      if (updateDriverDto.phone) userUpdateData.phone = updateDriverDto.phone;
+      if (updateDriverDto.realName) userUpdateData.realName = updateDriverDto.realName;
+      await this.userService.update(driver.userId, userUpdateData);
+    }
+
+    // 更新司机信息
+    const driverUpdateData = { ...updateDriverDto };
+    delete driverUpdateData.phone;
+    delete driverUpdateData.realName;
+    Object.assign(driver, driverUpdateData);
     return await this.driverRepository.save(driver);
   }
 
@@ -198,7 +221,7 @@ export class DriverService {
     const driver = await this.findById(id);
     
     // 检查状态转换是否合理
-    if (driver.status === DriverStatus.IN_RIDE && status === DriverStatus.ONLINE) {
+    if (driver.status === DriverStatus.BUSY && status === DriverStatus.ONLINE) {
       throw new BadRequestException('行程中不能切换为在线状态');
     }
 
@@ -292,8 +315,10 @@ export class DriverService {
     driver.totalOrders += 1;
     if (isCompleted) {
       driver.completedOrders += 1;
+      driver.completedTrips += 1;
     } else {
       driver.cancelledOrders += 1;
+      driver.cancelledTrips += 1;
     }
 
     return await this.driverRepository.save(driver);

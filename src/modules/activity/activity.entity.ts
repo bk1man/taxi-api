@@ -23,6 +23,10 @@ export enum ActivityType {
   DRIVER_ONLINE = 'driver_online',     // 司机上线
   DRIVER_OFFLINE = 'driver_offline',    // 司机下线
   SYSTEM_NOTIFICATION = 'system_notification', // 系统通知
+  SYSTEM = 'system',               // 系统类型
+  ORDER = 'order',                 // 订单类型
+  DRIVER = 'driver',               // 司机类型
+  PASSENGER = 'passenger',         // 乘客类型
 }
 
 export enum ActivityLevel {
@@ -128,6 +132,10 @@ export class Activity {
       [ActivityType.DRIVER_ONLINE]: '司机上线',
       [ActivityType.DRIVER_OFFLINE]: '司机下线',
       [ActivityType.SYSTEM_NOTIFICATION]: '系统通知',
+      [ActivityType.SYSTEM]: '系统消息',
+      [ActivityType.ORDER]: '订单消息',
+      [ActivityType.DRIVER]: '司机消息',
+      [ActivityType.PASSENGER]: '乘客消息',
     };
     return names[this.type] || this.type;
   }

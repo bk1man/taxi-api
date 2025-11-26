@@ -45,7 +45,7 @@ export class Driver {
   licenseExpiry: Date;
 
   @Column({ length: 50 })
-  vehicleNumber: string;
+  carPlate: string;
 
   @Column({ length: 50 })
   vehicleBrand: string;
@@ -86,17 +86,41 @@ export class Driver {
   @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
   currentLongitude: number;
 
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  locationAccuracy: number;
+
   @Column({ length: 200, nullable: true })
   currentAddress: string;
 
   @Column({ type: 'datetime', nullable: true })
   lastLocationUpdate: Date;
 
+  @Column({ type: 'datetime', nullable: true })
+  onlineAt: Date;
+
+  @Column({ type: 'datetime', nullable: true })
+  offlineAt: Date;
+
+  @Column({ type: 'datetime', nullable: true })
+  verifiedAt: Date;
+
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   rating: number;
 
   @Column({ type: 'int', default: 0 })
+  totalOrders: number;
+
+  @Column({ type: 'int', default: 0 })
   totalTrips: number;
+
+  @Column({ type: 'int', default: 0 })
+  completedOrders: number;
+
+  @Column({ type: 'int', default: 0 })
+  completedTrips: number;
+
+  @Column({ type: 'int', default: 0 })
+  cancelledOrders: number;
 
   @Column({ type: 'int', default: 0 })
   cancelledTrips: number;
@@ -106,6 +130,18 @@ export class Driver {
 
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   commissionOwed: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  totalIncome: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  thisMonthIncome: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  thisWeekIncome: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  todayIncome: number;
 
   @Column({ type: 'json', nullable: true })
   workHours: {
@@ -137,5 +173,11 @@ export class Driver {
   get acceptanceRate(): number {
     if (this.totalTrips === 0) return 100;
     return Math.round(((this.totalTrips - this.cancelledTrips) / this.totalTrips) * 100);
+  }
+
+  // 计算完成率
+  get completionRate(): number {
+    if (this.totalTrips === 0) return 100;
+    return Math.round((this.completedOrders / this.totalTrips) * 100);
   }
 }

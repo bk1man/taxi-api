@@ -27,7 +27,7 @@ export class UserController {
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() createUserDto: CreateUserDto) {
-    const user = await this.userService.create(createUserDto);
+    const user = await this.userService.createUser(createUserDto);
     return {
       success: true,
       message: '注册成功',
